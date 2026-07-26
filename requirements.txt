@@ -1,0 +1,16 @@
+langsmith>=0.1.0
+# rag_agent.py unchanged from ../promptfoo-redteam-practice: Ollama-served
+# model + TF-IDF retrieval, no vector DB or embedding API.
+ollama>=0.4.0
+scikit-learn>=1.4.0
+# Faithfulness reuse in online_eval.py (step 3) needs an OpenAI-SDK-style
+# client pointed at Ollama's OpenAI-compatible endpoint, same pattern as
+# ../ragas-capstone/tests/test_rag_agent.py -- not an actual OpenAI account.
+ragas>=0.4.0,<1.0.0
+openai>=1.0.0
+langchain-community>=0.3.0,<0.4.0
+# Only needed if tracing.py step 3 decides to wrap Anthropic calls directly
+# instead of tracing the Ollama call manually -- see that file's TODO 3.
+anthropic>=0.30.0
+python-dotenv>=1.0.0
+pytest>=7.0.0
