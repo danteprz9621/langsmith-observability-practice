@@ -21,7 +21,7 @@ langsmith-observability-practice/
 ├── data/
 │   └── knowledge_base/             # unchanged, same 7 policy docs
 ├── tracing.py                      # SKELETON: Ch 2 — tracing + root-cause analysis
-├── datasets.py                     # SKELETON: Ch 3a — versioned dataset of goldens
+├── golden_dataset.py                # SKELETON: Ch 3a — versioned dataset of goldens
 ├── experiments.py                  # SKELETON: Ch 3b — evaluate() with code + LLM-as-judge evaluators
 ├── tests/
 │   └── test_regression_gate.py     # SKELETON: Ch 4 — pytest CI gate on evaluate() thresholds
@@ -48,7 +48,7 @@ the LangSmith UI. Ends with a deliberate-break exercise: prove you can
 tell "bad retrieval" apart from "bad generation" from the trace alone.
 
 **Chapter 3 — Versioned datasets + experiments.**
-→ [`datasets.py`](datasets.py), [`experiments.py`](experiments.py)
+→ [`golden_dataset.py`](golden_dataset.py), [`experiments.py`](experiments.py)
 Build a golden dataset from the knowledge base, then run `evaluate()`
 against it with one code evaluator and one LLM-as-judge evaluator. Ends
 with using the LangSmith experiment-comparison view to see score deltas
@@ -103,7 +103,7 @@ python agents/rag_agent.py
 
 1. `tracing.py` — get one trace showing up in the LangSmith UI before
    anything else; every later chapter assumes tracing already works.
-2. `datasets.py` — write the goldens.
+2. `golden_dataset.py` — write the goldens.
 3. `experiments.py` — score the goldens.
 4. `tests/test_regression_gate.py` — turn that score into a gate.
 5. `online_eval.py` — extend eval past the gate, to live traffic.

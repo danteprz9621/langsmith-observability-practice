@@ -1,7 +1,7 @@
 """
 Chapter 3b -- Experiments: evaluate() with code evaluators and LLM-as-judge.
 
-Goal: run agents.rag_agent.ask() over the whole datasets.py dataset in one
+Goal: run agents.rag_agent.ask() over the whole golden_dataset.py dataset in one
 `evaluate()` call, scored by two different evaluator styles, and land the
 results in the LangSmith UI as a comparable experiment run.
 
@@ -18,12 +18,12 @@ TODO:
 
 3. Write one **LLM-as-judge evaluator** using LangSmith's evaluator
    helpers (or DeepEval/RAGAS metrics wrapped as a LangSmith evaluator) for
-   the criteria-based examples from datasets.py step 3 that a code
+   the criteria-based examples from golden_dataset.py step 3 that a code
    evaluator can't score -- e.g. "did the answer correctly refuse when the
    KB had no relevant info."
 
 4. Call `evaluate()` with the target function, both evaluators, and the
-   dataset name from datasets.py. Confirm per-example scores and an
+   dataset name from golden_dataset.py. Confirm per-example scores and an
    aggregate summary appear in the LangSmith UI, not just stdout.
 
 5. Run it twice (e.g. after a deliberate prompt tweak in rag_agent.py) and
@@ -38,15 +38,15 @@ from ragas.metrics.collections import Faithfulness
 from ragas.llms import llm_factory
 from openai import AsyncOpenAI
 from langsmith import evaluate
-from datasets import DATASET_NAME
+from golden_dataset import DATASET_NAME
 
 client = AsyncOpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 judge_llm = llm_factory("llama3.1:8b", provider="openai", client=client)
 faithfulness = Faithfulness(llm=judge_llm)
 
 def target(inputs: dict) -> dict:
-    answer, contexts = ask(inputs["question"])      # ask must also return retrieved chunks
-    return {"answer": answer, "retrieval_context": contexts}
+    result = ask(inputs["question"])
+    return {"answer": result["answer"], "retrieval_context": result["retrieval_context"]}
 
 def has_retrieval(inputs, outputs, reference_outputs) -> dict:
     ctx = outputs.get("retrieval_context") or []
