@@ -1,0 +1,59 @@
+name: Prompt-regression gate
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  regression-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # .github/ollama-models.txt just lists model names -- hashing it
+      # gives the cache key, so editing that file (adding/changing a
+      # model) is what busts the cache. Model weights (~9GB for both)
+      # never need re-downloading otherwise. No GPU on this runner, so
+      # both 7-8B models run on CPU -- caching matters more here than in
+      # a typical pip-install cache.
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-models-v1-${{ hashFiles('.github/ollama-models.txt') }}
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama server
+        run: ollama serve &
+
+      - name: Wait for Ollama to be ready
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/tags && exit 0
+            sleep 2
+          done
+          echo "Ollama never came up" && exit 1
+
+      - name: Pull agent + judge models
+        timeout-minutes: 20
+        run: |
+          while read -r model; do ollama pull "$model"; done < .github/ollama-models.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Run prompt-regression gate
+        timeout-minutes: 20
+        env:
+          LANGCHAIN_TRACING_V2: "true"
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_PROJECT: ${{ vars.LANGCHAIN_PROJECT }}
+        run: pytest tests/test_regression_gate.py -v

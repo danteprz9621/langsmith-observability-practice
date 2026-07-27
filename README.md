@@ -58,8 +58,8 @@ after a deliberate prompt change.
 → [`tests/test_regression_gate.py`](tests/test_regression_gate.py)
 Turn Chapter 3's `evaluate()` run into a pytest assertion with
 noise-aware thresholds (same reasoning as `../ragas-capstone`'s noise
-calibration), add cost caching, and wire it into CircleCI as a required
-check.
+calibration), add cost caching, and wire it into GitHub Actions
+(`.github/workflows/regression-gate.yml`) as a required check.
 
 **Chapter 5 — Online-eval / production drift monitoring.**
 → [`online_eval.py`](online_eval.py)
