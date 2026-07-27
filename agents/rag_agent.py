@@ -38,7 +38,7 @@ def _load_documents() -> list[str]:
     return docs
 
 @traceable(run_type="retriever")
-def retrieve(question: str, top_k: int = 2) -> list[str]:
+def retrieve(question: str, top_k: int = 1) -> list[str]:
     """Return the top_k most relevant document chunks for the question."""
     documents = _load_documents()
     vectorizer = TfidfVectorizer(stop_words="english")
