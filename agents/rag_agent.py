@@ -10,9 +10,16 @@ import os
 from glob import glob
 
 import ollama
+from dotenv import load_dotenv
 from langsmith import traceable
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# Every LANGCHAIN_* var (tracing on/off, API key, project) lives in .env --
+# load it here since this module's @traceable calls are what actually need
+# it, and everything else (experiments.py, online_eval.py) imports from
+# here before making its own LangSmith calls.
+load_dotenv(override=True)
 
 KB_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "knowledge_base")
 

@@ -33,8 +33,10 @@ TODO:
    silently mutating history out from under prior experiment results.
 """
 
+from dotenv import load_dotenv
 from langsmith import Client
 
+load_dotenv(override=True)
 ls = Client()
 DATASET_NAME = "travel-agency-golden"
 
