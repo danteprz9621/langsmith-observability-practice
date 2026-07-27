@@ -55,11 +55,20 @@ with using the LangSmith experiment-comparison view to see score deltas
 after a deliberate prompt change.
 
 **Chapter 4 — Prompt-regression gating in CI.**
-→ [`tests/test_regression_gate.py`](tests/test_regression_gate.py)
+→ [`tests/test_regression_gate.py`](tests/test_regression_gate.py),
+[`.github/workflows/regression-gate.yml`](.github/workflows/regression-gate.yml)
 Turn Chapter 3's `evaluate()` run into a pytest assertion with
 noise-aware thresholds (same reasoning as `../ragas-capstone`'s noise
-calibration), add cost caching, and wire it into GitHub Actions
-(`.github/workflows/regression-gate.yml`) as a required check.
+calibration), and wire it into GitHub Actions as a required check.
+
+CI can't run local Ollama models fast (no GPU on a hosted runner), so it
+switches `agents/rag_agent.py` and `experiments.py`'s judge onto Groq's
+hosted inference instead, purely by the presence of a `GROQ_API_KEY`
+secret — local dev is unaffected and still uses Ollama. CI also caps
+`evaluate()` to the first `EVAL_SAMPLE_SIZE` golden examples (3, via the
+workflow) instead of the full dataset, both to stay comfortably inside
+Groq's free-tier rate limits and to keep the job fast. See
+`.env.example` for both variables' local-dev meaning.
 
 **Chapter 5 — Online-eval / production drift monitoring.**
 → [`online_eval.py`](online_eval.py)
