@@ -1,118 +1,115 @@
-# LangSmith Observability Practice Project
+# Trailhead Travel Observability
 
-A practice project for the Observability & Eval Platform phase of the
-roadmap (`../../ai-testing-roadmap.md`, Phase 4) — tracing, versioned
-datasets/experiments, CI regression gating, and production drift
-monitoring with [LangSmith](https://docs.smith.langchain.com), layered on
-top of the same "Trailhead Travel" RAG agent used since
-[`../deepeval-capstone`](../deepeval-capstone), most recently guarded in
-[`../promptfoo-redteam-practice`](../promptfoo-redteam-practice).
+Tracing, evaluation, and CI regression gating for Trailhead Travel's
+customer-support RAG agent, using [LangSmith](https://docs.smith.langchain.com).
+The earlier projects in this series —
+[`trailhead-travel-agent-eval`](https://github.com/danteprz9621/trailhead-travel-agent-eval),
+[`trailhead-travel-rag-eval`](https://github.com/danteprz9621/trailhead-travel-rag-eval),
+[`trailhead-travel-red-team`](https://github.com/danteprz9621/trailhead-travel-red-team) —
+all answer "is this answer good, and is it safe?" at test time. This one
+answers the question that matters once the agent is actually running: when
+an answer goes wrong, can you find out why in under a minute, and can you
+stop a bad prompt change from ever reaching production in the first place?
 
-This is a **skeleton**, not a finished project. Every `.py` file below has
-numbered TODO comments describing what to build — no implementation yet.
-Same pattern `../promptfoo-redteam-practice` used before it was completed.
+[![Prompt-regression gate](https://github.com/danteprz9621/trailhead-travel-observability/actions/workflows/regression-gate.yml/badge.svg)](https://github.com/danteprz9621/trailhead-travel-observability/actions/workflows/regression-gate.yml)
+
+## What's here
+
+- **Tracing + root-cause analysis** — every call through `agents/rag_agent.py`'s
+  `retrieve()` and `call_llm()` is `@traceable`-decorated and nested under
+  a parent `ask()` trace, so a bad answer can be root-caused to "retrieval
+  pulled the wrong doc" vs. "the LLM ignored good context" from a single
+  trace in the LangSmith UI — no re-running required.
+- **A versioned golden dataset + experiments** ([`golden_dataset.py`](golden_dataset.py),
+  [`experiments.py`](experiments.py)) — 8 hand-written question/criteria
+  pairs covering the knowledge base's 7 policy topics (plus one
+  deliberately unanswerable question), scored on every run by both a code
+  evaluator (`has_retrieval`) and an LLM-as-judge evaluator (`faithfulness`,
+  via Ragas).
+- **A CI prompt-regression gate** ([`tests/test_regression_gate.py`](tests/test_regression_gate.py),
+  [`.github/workflows/regression-gate.yml`](.github/workflows/regression-gate.yml)) —
+  turns that experiment run into a required GitHub Actions check with
+  noise-aware thresholds, so a prompt change that tanks faithfulness or
+  drops retrieval fails the PR instead of shipping silently. CI runs
+  against Groq's hosted inference rather than local Ollama (a CPU-only
+  runner can't run 7-8B models fast enough) on a capped 3-example sample,
+  switched purely by the presence of a `GROQ_API_KEY` secret — local dev
+  is unaffected and still uses Ollama against the full dataset.
+- **Production drift monitoring** ([`online_eval.py`](online_eval.py)) —
+  scores simulated "live" traffic (messier, uncurated questions, no
+  reference answer available) with the same referenceless evaluators,
+  attaching scores to each trace as LangSmith feedback — the scripted
+  equivalent of an online-evaluation rule that would run continuously.
 
 ## Project structure
 
 ```
-langsmith-observability-practice/
+trailhead-travel-observability/
 ├── agents/
-│   └── rag_agent.py                # unchanged from ../promptfoo-redteam-practice
+│   └── rag_agent.py                # unchanged from trailhead-travel-red-team, now @traceable + Ollama/Groq-switchable
 ├── data/
 │   └── knowledge_base/             # unchanged, same 7 policy docs
-├── tracing.py                      # SKELETON: Ch 2 — tracing + root-cause analysis
-├── golden_dataset.py                # SKELETON: Ch 3a — versioned dataset of goldens
-├── experiments.py                  # SKELETON: Ch 3b — evaluate() with code + LLM-as-judge evaluators
+├── golden_dataset.py                # builds/syncs the "travel-agency-golden" LangSmith dataset
+├── experiments.py                  # evaluate() run: has_retrieval (code) + faithfulness (LLM-as-judge)
 ├── tests/
-│   └── test_regression_gate.py     # SKELETON: Ch 4 — pytest CI gate on evaluate() thresholds
-├── online_eval.py                  # SKELETON: Ch 5 — referenceless online eval / drift monitoring
+│   └── test_regression_gate.py     # pytest gate on evaluate() thresholds
+├── .github/workflows/
+│   └── regression-gate.yml         # GitHub Actions: runs the gate on every PR/push to master
+├── online_eval.py                  # referenceless scoring of simulated production traffic
 ├── requirements.txt
+├── pytest.ini
 ├── .env.example
 └── .gitignore
 ```
 
-## The 5 chapters — what to do, in order
-
-**Chapter 1 — Gates vs. observability (conceptual, no code).**
-Before writing anything, work out in your own words how a CI gate
-(pass/fail, blocks a merge) differs from observability (a trace/dashboard
-you look at) and how they complement rather than replace each other. This
-framing is what makes Chapter 4 (a gate) and Chapter 5 (observability) feel
-like two tools instead of a redundant pair. No file for this one — just
-notes, if you want them, in this README or a scratch doc.
-
-**Chapter 2 — Tracing + root-cause analysis.** → [`tracing.py`](tracing.py)
-Wire `@traceable` / `wrap_anthropic` into `agents/rag_agent.py`'s call
-path so retrieval and the LLM call show up as separate, nested spans in
-the LangSmith UI. Ends with a deliberate-break exercise: prove you can
-tell "bad retrieval" apart from "bad generation" from the trace alone.
-
-**Chapter 3 — Versioned datasets + experiments.**
-→ [`golden_dataset.py`](golden_dataset.py), [`experiments.py`](experiments.py)
-Build a golden dataset from the knowledge base, then run `evaluate()`
-against it with one code evaluator and one LLM-as-judge evaluator. Ends
-with using the LangSmith experiment-comparison view to see score deltas
-after a deliberate prompt change.
-
-**Chapter 4 — Prompt-regression gating in CI.**
-→ [`tests/test_regression_gate.py`](tests/test_regression_gate.py),
-[`.github/workflows/regression-gate.yml`](.github/workflows/regression-gate.yml)
-Turn Chapter 3's `evaluate()` run into a pytest assertion with
-noise-aware thresholds (same reasoning as `../ragas-capstone`'s noise
-calibration), and wire it into GitHub Actions as a required check.
-
-CI can't run local Ollama models fast (no GPU on a hosted runner), so it
-switches `agents/rag_agent.py` and `experiments.py`'s judge onto Groq's
-hosted inference instead, purely by the presence of a `GROQ_API_KEY`
-secret — local dev is unaffected and still uses Ollama. CI also caps
-`evaluate()` to the first `EVAL_SAMPLE_SIZE` golden examples (3, via the
-workflow) instead of the full dataset, both to stay comfortably inside
-Groq's free-tier rate limits and to keep the job fast. See
-`.env.example` for both variables' local-dev meaning.
-
-**Chapter 5 — Online-eval / production drift monitoring.**
-→ [`online_eval.py`](online_eval.py)
-Score simulated "live" traffic with a referenceless evaluator (no
-expected answer available), attach it as a LangSmith online evaluation
-rule, and close the loop by turning bad production traces into new
-Chapter 3 goldens.
-
-**Capstone.** Once all five land, write a short `CAPSTONE.md` (or fold
-into this README) showing all five capabilities stacked over the same
-agent: traced, dataset-evaluated, CI-gated, and production-monitored.
-
 ## Setup
 
 ```bash
-cd langsmith-observability-practice
+cd trailhead-travel-observability
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
 Copy `.env.example` to `.env` and fill in `LANGCHAIN_API_KEY` (free
-LangSmith account — smith.langchain.com). `ANTHROPIC_API_KEY` is only
-needed if Chapter 2, step 3 decides to route the traced LLM call through
-Anthropic instead of the existing Ollama call.
+LangSmith account — smith.langchain.com).
 
-The agent itself stays free/local — same Ollama setup as
-`../ragas-capstone`:
+The agent itself stays free/local for development — same Ollama setup as
+`trailhead-travel-rag-eval`:
 
 ```bash
 ollama pull qwen2.5-coder:7b
 ```
 
-Try it standalone before wiring in tracing:
+Try it standalone before wiring in anything else:
 
 ```bash
 python agents/rag_agent.py
 ```
 
-## Suggested build order
+## Running it
 
-1. `tracing.py` — get one trace showing up in the LangSmith UI before
-   anything else; every later chapter assumes tracing already works.
-2. `golden_dataset.py` — write the goldens.
-3. `experiments.py` — score the goldens.
-4. `tests/test_regression_gate.py` — turn that score into a gate.
-5. `online_eval.py` — extend eval past the gate, to live traffic.
+```bash
+python golden_dataset.py                 # (re)syncs the golden dataset in LangSmith
+pytest tests/test_regression_gate.py -v   # runs the eval, asserts it against thresholds
+python online_eval.py                     # scores simulated production traffic
+```
+
+Every call lands a trace, and every eval run lands an experiment, in the
+LangSmith UI under whatever `LANGCHAIN_PROJECT` is set to.
+
+`golden_dataset.py` has no import guard, so importing it (as `experiments.py`
+does) resyncs the dataset from `qa_criteria` every time — harmless, since
+that list is static, just extra API calls per run rather than a one-time
+setup step.
+
+## CI
+
+`.github/workflows/regression-gate.yml` runs the gate above on every push
+and PR against `master`, using Groq instead of Ollama (see "What's here").
+Required secrets/variables, set under the repo's **Settings → Secrets and
+variables → Actions**:
+
+- `LANGCHAIN_API_KEY` (secret)
+- `GROQ_API_KEY` (secret) — free tier, no card required: console.groq.com
+- `LANGCHAIN_PROJECT` (variable, optional)
